@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💊 Трекер прийому ліків</title>
+<style>
+:root {
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a2332;
+  --bg-tertiary: #243447;
+  --bg-card: #1e2a3a;
+  --accent: #00bfa5;
+  --accent-hover: #00d4b8;
+  --accent-soft: rgba(0, 191, 165, 0.15);
+  --warning: #ffa726;
+  --danger: #ef5350;
+  --success: #66bb6a;
+  --sugar: #ef9a9a;
+  --weight: #90caf9;
+  --text-primary: #e8eef2;
+  --text-secondary: #8a9ba8;
+  --text-muted: #5a6b78;
+  --border: #2d3e50;
+  --border-light: #34495e;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding: 16px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding-bottom: 80px;
+}
+
+h1, h2, h3 { font-weight: 600; }
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+  border-radius: 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.header h1 { font-size: 20px; color: var(--accent); }
+.header .date { font-size: 14px; color: var(--text-secondary); }
+
+.sync-status {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-top: 4px;
+  display: inline-block;
+}
+.sync-status.ok { background: rgba(102,187,106,0.15); color: var(--success); }
+.sync-status.error { background: rgba(239,83,80,0.15); color: var(--danger); }
+.sync-status.pending { background: rgba(255,167,38,0.15); color: var(--warning); }
+.sync-status.off { background: var(--bg-tertiary); color: var(--text-muted); }
+
+.section {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.section-title {
+  font-size: 16px;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.section-title .btn-small {
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.section-title .btn-small:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.time-block { margin-bottom: 16px; }
+.time-block:last-child { margin-bottom: 0; }
+.time-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+.med-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.med-item:hover { background: var(--bg-tertiary); }
+.med-item.taken {
+  background: rgba(102, 187, 106, 0.1);
+  border-color: rgba(102, 187, 106, 0.3);
+}
+.med-item.taken .med-name { text-decoration: line-through; color: var(--text-muted); }
+
+.checkbox {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border-light);
+  border-radius: 6px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.med-item.taken .checkbox {
+  background: var(--success);
+  border-color: var(--success);
+}
+.checkbox::after {
+  content: '✓';
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.med-item.taken .checkbox::after { opacity: 1; }
+
+.med-info { flex: 1; }
+.med-name { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+.med-meta { font-size: 12px; color: var(--text-secondary); }
+.med-progress {
+  font-size: 11px;
+  color: var(--accent);
+  padding: 3px 8px;
+  background: var(--accent-soft);
+  border-radius: 6px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.med-progress.permanent { color: var(--warning); background: rgba(255, 167, 38, 0.15); }
+
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.btn-primary { background: var(--accent); color: var(--bg-primary); }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-light); }
+.btn-secondary:hover { background: var(--bg-secondary); }
+.btn-danger { background: var(--danger); color: white; }
+
+.quick-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+.stock-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stock-table th, .stock-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+.stock-table th { color: var(--text-secondary); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+.stock-table td { color: var(--text-primary); }
+.stock-input {
+  width: 60px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-family: inherit;
+  text-align: center;
+}
+.stock-input:focus { outline: none; border-color: var(--accent); }
+.days-left { font-weight: 500; }
+.days-left.urgent { color: var(--danger); }
+.days-left.warning { color: var(--warning); }
+.days-left.ok { color: var(--success); }
+
+/* === ЗДОРОВʼЯ: ЦУКОР І ВАГА === */
+.health-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.health-col { flex: 1; min-width: 240px; }
+
+.input-group { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; }
+.field input, .field select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+.field input.sugar-val { width: 90px; }
+.field input.weight-val { width: 110px; }
+
+.sugar-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--sugar);
+  font-size: 13px;
+}
+.sugar-entry .val { font-weight: 600; color: var(--sugar); font-size: 15px; }
+.sugar-entry .tag {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+.sugar-entry .del {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 0 4px;
+}
+.sugar-entry .del:hover { color: var(--danger); }
+.sugar-entry.high .val { color: var(--danger); }
+.sugar-entry.low .val { color: var(--warning); }
+
+.weight-display {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--weight);
+  margin: 8px 0;
+}
+.weight-trend { font-size: 12px; color: var(--text-secondary); }
+.weight-trend.down { color: var(--success); }
+.weight-trend.up { color: var(--warning); }
+
+.sugar-summary {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.sugar-summary span b { color: var(--sugar); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat-card {
+  background: var(--bg-secondary);
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px; }
+.stat-value { font-size: 22px; font-weight: 600; color: var(--accent); }
+.stat-value.warning { color: var(--warning); }
+
+.progress-bar {
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--success));
+  transition: width 0.3s;
+}
+
+.history-item {
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.history-item:hover { background: var(--bg-tertiary); }
+.history-date { color: var(--text-secondary); }
+.history-stats { color: var(--accent); font-weight: 500; }
+.history-details {
+  font-size: 12px;
+  padding: 10px;
+  margin-top: -4px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  border-radius: 0 0 8px 8px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  display: none;
+}
+.history-details.active { display: block; }
+.history-details ul { list-style: none; padding-left: 0; }
+.history-details li { padding: 3px 0; }
+.history-details li.taken::before { content: '✓ '; color: var(--success); }
+.history-details li.missed::before { content: '✗ '; color: var(--danger); }
+.history-health { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+
+.calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar-header {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px;
+  text-transform: uppercase;
+}
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  position: relative;
+  cursor: pointer;
+}
+.calendar-day.empty { background: transparent; }
+.calendar-day.today { border-color: var(--accent); font-weight: 700; color: var(--accent); }
+.calendar-day.full { background: rgba(102, 187, 106, 0.2); }
+.calendar-day.partial { background: rgba(255, 167, 38, 0.2); }
+.calendar-day.missed { background: rgba(239, 83, 80, 0.15); }
+
+.settings-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+.settings-modal.active { display: flex; }
+.settings-content {
+  background: var(--bg-card);
+  padding: 24px;
+  border-radius: 14px;
+  max-width: 520px;
+  width: 100%;
+  border: 1px solid var(--border);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.settings-content h2 { margin-bottom: 16px; color: var(--accent); }
+.settings-content h3 { margin-top: 20px; font-size: 14px; color: var(--text-primary); }
+.settings-content label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; margin-top: 12px; }
+.settings-content input[type="text"],
+.settings-content input[type="password"],
+.settings-content textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+.settings-content textarea { resize: vertical; min-height: 60px; }
+.settings-content input:focus, .settings-content textarea:focus { outline: none; border-color: var(--accent); }
+.settings-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.settings-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; }
+
+.alert-banner {
+  background: rgba(255, 167, 38, 0.15);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  display: none;
+}
+.alert-banner.active { display: block; }
+.alert-banner.danger { background: rgba(239, 83, 80, 0.15); border-color: var(--danger); color: var(--danger); }
+
+.test-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.test-btn-row .btn { font-size: 12px; padding: 6px 12px; }
+
+/* === БЛОК ЗВІТУ === */
+.report-btn {
+  width: 100%;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  font-size: 15px;
+  padding: 14px;
+}
+.report-btn:hover { background: var(--bg-secondary); }
+.report-btn.due {
+  background: var(--warning);
+  color: var(--bg-primary);
+  border-color: var(--warning);
+  animation: pulse 2s infinite;
+}
+.report-btn.sent {
+  background: rgba(102,187,106,0.15);
+  color: var(--success);
+  border-color: var(--success);
+  cursor: default;
+  animation: none;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,167,38,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(255,167,38,0); }
+}
+.report-warning {
+  display: none;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(239,83,80,0.15);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.report-warning.active { display: block; }
+#reportSection.sent { border-color: rgba(102,187,106,0.3); }
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent);
+  color: var(--text-primary);
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  z-index: 200;
+  transition: transform 0.3s;
+  box-shadow: var(--shadow);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: var(--danger); }
+
+@media (max-width: 600px) {
+  body { padding: 10px; padding-bottom: 80px; }
+  .header h1 { font-size: 17px; }
+  .section { padding: 14px; }
+  .stock-table { font-size: 12px; }
+  .stock-table th, .stock-table td { padding: 8px 4px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>💊 Трекер прийому ліків</h1>
+    <div class="date" id="currentDate">—</div>
+    <span class="sync-status off" id="syncStatus">☁ Google Sheets: не налаштовано</span>
+  </div>
+  <button class="btn btn-secondary" onclick="openSettings()">⚙️</button>
+</div>
+
+<div id="alertContainer"></div>
+
+<!-- БЛОК ЗВІТУ -->
+<div class="section" id="reportSection">
+  <div class="section-title">📨 Звіт за день</div>
+  <div id="reportInfo" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">—</div>
+  <button class="btn report-btn" id="reportBtn" onclick="manualSendReport()">📨 Відправити звіт за день</button>
+  <div class="report-warning" id="reportWarning">
+    ⚠️ <b>Не закривай сторінку!</b> Звіт за сьогодні ще не надіслано. Натисни кнопку вище перед тим, як закрити вкладку.
+  </div>
+</div>
+
+<!-- СЬОГОДНІ -->
+<div class="section">
+  <div class="section-title">
+    📅 Сьогодні
+    <span id="todayStats" style="font-size: 13px; color: var(--text-secondary);">—</span>
+  </div>
+
+  <div class="time-block">
+    <div class="time-label">🌅 Ранок <span style="color: var(--text-muted); font-size: 12px;">нагадування о 10:00</span></div>
+    <div id="morningMeds"></div>
+    <div class="quick-actions">
+      <button class="btn btn-secondary btn-small" onclick="markAll('morning', true)">✓ Всі ранкові</button>
+      <button class="btn btn-secondary btn-small" onclick="markAll('morning', false)">✗ Скинути</button>
+    </div>
+  </div>
+
+  <div class="time-block">
+    <div class="time-label">🌆 Вечір <span style="color: var(--text-muted); font-size: 12px;">нагадування о 21:00</span></div>
+    <div id="eveningMeds"></div>
+    <div class="quick-actions">
+      <button class="btn btn-secondary btn-small" onclick="markAll('evening', true)">✓ Всі вечірні</button>
+      <button class="btn btn-secondary btn-small" onclick="markAll('evening', false)">✗ Скинути</button>
+    </div>
+  </div>
+</div>
+
+<!-- ЗДОРОВʼЯ: ЦУКОР І ВАГА -->
+<div class="section">
+  <div class="section-title">🩺 Замір показників</div>
+  <div class="health-row">
+
+    <!-- ЦУКОР -->
+    <div class="health-col">
+      <div style="font-size: 14px; color: var(--sugar); margin-bottom: 10px;">🩸 Цукор крові (ммоль/л)</div>
+      <div id="sugarList"></div>
+      <div class="input-group" style="margin-top: 8px;">
+        <div class="field">
+          <label>Значення</label>
+          <input type="number" class="sugar-val" id="sugarValue" step="0.1" min="0" placeholder="6.2">
+        </div>
+        <div class="field">
+          <label>Мітка</label>
+          <select id="sugarTag">
+            <option value="Натще">Натще</option>
+            <option value="Після їжі">Після їжі</option>
+            <option value="Перед сном">Перед сном</option>
+            <option value="Інше">Інше</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="addSugar()">+ Додати</button>
+      </div>
+      <div class="sugar-summary" id="sugarSummary"></div>
+    </div>
+
+    <!-- ВАГА -->
+    <div class="health-col">
+      <div style="font-size: 14px; color: var(--weight); margin-bottom: 10px;">⚖️ Вага (кг)</div>
+      <div class="weight-display" id="weightDisplay">— кг</div>
+      <div class="weight-trend" id="weightTrend"></div>
+      <div class="input-group" style="margin-top: 10px;">
+        <div class="field">
+          <label>Вага сьогодні</label>
+          <input type="number" class="weight-val" id="weightValue" step="0.1" min="0" placeholder="84.5">
+        </div>
+        <button class="btn btn-primary" onclick="saveWeight()">Зберегти</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ЗАЛИШКИ -->
+<div class="section">
+  <div class="section-title">
+    📦 Залишки таблеток
+    <button class="btn-small" onclick="recalculateStock()">🔄 Перерахувати</button>
+  </div>
+  <table class="stock-table">
+    <thead>
+      <tr>
+        <th>Препарат</th>
+        <th>Залишок</th>
+        <th>На день</th>
+        <th>Вистачить</th>
+      </tr>
+    </thead>
+    <tbody id="stockTable"></tbody>
+  </table>
+</div>
+
+<!-- СТАТИСТИКА -->
+<div class="section">
+  <div class="section-title">📊 Статистика</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Сьогодні</div>
+      <div class="stat-value" id="statToday">0/0</div>
+      <div class="progress-bar"><div class="progress-fill" id="statTodayBar" style="width: 0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">За тиждень</div>
+      <div class="stat-value" id="statWeek">0%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Днів лікування</div>
+      <div class="stat-value" id="statDays">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- ІСТОРІЯ -->
+<div class="section">
+  <div class="section-title">
+    📜 Історія
+    <button class="btn-small" onclick="toggleHistory()" id="historyToggle">Показати все</button>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+<!-- КАЛЕНДАР -->
+<div class="section">
+  <div class="section-title">
+    📅 План лікування
+    <div>
+      <button class="btn-small" onclick="changeMonth(-1)">◄</button>
+      <span id="calendarMonth" style="margin: 0 8px; color: var(--text-primary);">—</span>
+      <button class="btn-small" onclick="changeMonth(1)">►</button>
+    </div>
+  </div>
+  <div class="calendar" id="calendar"></div>
+  <div style="margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
+    🟢 Все прийнято · 🟠 Частково · 🔴 Пропущено · 🔷 Сьогодні
+  </div>
+</div>
+
+<!-- МОДАЛКА НАЛАШТУВАНЬ -->
+<div class="settings-modal" id="settingsModal">
+  <div class="settings-content">
+    <h2>⚙️ Налаштування</h2>
+
+    <h3>Telegram-бот</h3>
+    <label>Bot Token</label>
+    <input type="password" id="botToken" placeholder="123456:AAH...">
+    <label>Chat ID (твій, головний)</label>
+    <input type="text" id="chatId" placeholder="123456789">
+    <label>Отримувачі вечірнього звіту о 23:00</label>
+    <textarea id="reportChatIds" placeholder="Один chat_id на рядок, або через кому. Напр.:&#10;123456789&#10;987654321"></textarea>
+    <div class="settings-hint">Сюди о 23:00 надсилається повний звіт за день. Якщо порожньо — звіт піде тільки на головний Chat ID.</div>
+
+    <h3>Google Sheets</h3>
+    <label>URL Web App (Apps Script)</label>
+    <input type="text" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <div class="settings-hint">Дані синхронізуються автоматично при кожному збереженні.</div>
+
+    <div class="test-btn-row">
+      <button class="btn btn-secondary" onclick="testTelegram()">🧪 Тест Telegram</button>
+      <button class="btn btn-secondary" onclick="testSheet()">🧪 Тест Sheets</button>
+      <button class="btn btn-secondary" onclick="requestNotificationPermission()">🔔 Push</button>
+    </div>
+
+    <h3>Дані</h3>
+    <div class="test-btn-row">
+      <button class="btn btn-secondary" onclick="syncToSheet(true)">☁ Синхронізувати зараз</button>
+      <button class="btn btn-secondary" onclick="exportData()">📥 Експорт JSON</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Імпорт JSON</button>
+      <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+      <button class="btn btn-danger" onclick="resetAll()">🗑 Скинути все</button>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn btn-secondary" onclick="closeSettings()">Закрити</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================
+// КОНФІГУРАЦІЯ ЛІКІВ
+// ============================================
+const MEDICATIONS = [
+  { id: 'altsmerat', name: 'Альцмерат', dose: '1 фл.', times: ['morning'], startDate: '2026-05-15', duration: 20, dailyDose: 1, unit: 'фл' },
+  { id: 'betagistin', name: 'Бетагістин-КВ', dose: '24 мг', times: ['morning', 'evening'], startDate: '2026-05-05', duration: 60, dailyDose: 2, unit: 'т' },
+  { id: 'glineiro', name: 'Глінейро', dose: '1 капс.', times: ['morning', 'evening'], startDate: '2026-05-05', duration: 90, dailyDose: 2, unit: 'к' },
+  { id: 'flavicitin', name: 'Флавіцитин', dose: '1 к.', times: ['morning', 'evening'], startDate: '2026-05-15', duration: 60, dailyDose: 2, unit: 'к' },
+  { id: 'membral', name: 'Мембрал', dose: '2 т (постійно)', times: ['morning'], startDate: '2026-05-15', duration: null, dailyDose: 2, unit: 'т', note: 'Постійно з 15.05.26' },
+  { id: 'klivas', name: 'Клівас плюс', dose: '10/10 мг', times: ['evening'], startDate: '2026-05-05', duration: null, dailyDose: 1, unit: 'т' },
+  { id: 'irbetan', name: 'Ірбетан', dose: '300 мг', times: ['morning'], startDate: '2026-05-05', duration: null, dailyDose: 1, unit: 'т' },
+  { id: 'nebival', name: 'Небівал', dose: '5 мг', times: ['morning'], startDate: '2026-05-05', duration: null, dailyDose: 1, unit: 'т' },
+  { id: 'glicofit', name: 'Гліцофіт', dose: '1 т.', times: ['morning', 'evening'], startDate: '2026-04-15', duration: 90, dailyDose: 2, unit: 'т' }
+];
+
+// Референсні межі цукру (ммоль/л) для підсвічування
+const SUGAR_NORMS = {
+  'Натще':      { low: 3.9, high: 6.1 },
+  'Після їжі':  { low: 3.9, high: 7.8 },
+  'Перед сном': { low: 3.9, high: 7.2 },
+  'Інше':       { low: 3.9, high: 7.8 }
+};
+
+// ============================================
+// STORAGE
+// ============================================
+const STORAGE_KEY = 'medsTracker_v2';
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    const d = JSON.parse(raw);
+    // міграція зі старої версії
+    if (!d.health) d.health = {};
+    if (!d.reportSent) d.reportSent = {};
+    if (!d.settings.reportChatIds) d.settings.reportChatIds = '';
+    if (!d.settings.sheetUrl) d.settings.sheetUrl = '';
+    return d;
+  }
+  // спроба підтягнути дані зі старої версії v1
+  const oldRaw = localStorage.getItem('medsTracker_v1');
+  const base = {
+    history: {},
+    health: {},      // { 'YYYY-MM-DD': { sugar: [{value, tag, time}], weight: 84.5 } }
+    reportSent: {},   // { 'YYYY-MM-DD': 'HH:MM' } — коли надіслано звіт
+    stock: {},
+    settings: { botToken: '', chatId: '', reportChatIds: '', sheetUrl: '' },
+    lastReminderSent: {}
+  };
+  if (oldRaw) {
+    const old = JSON.parse(oldRaw);
+    base.history = old.history || {};
+    base.stock = old.stock || {};
+    if (old.settings) {
+      base.settings.botToken = old.settings.botToken || '';
+      base.settings.chatId = old.settings.chatId || '';
+    }
+  }
+  return base;
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadData();
+let calendarDate = new Date();
+
+// ============================================
+// УТИЛІТИ
+// ============================================
+function todayKey() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off * 60000);
+  return local.toISOString().split('T')[0];
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatDateLong() {
+  const d = new Date();
+  const days = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'Пʼятниця', 'Субота'];
+  return `${days[d.getDay()]}, ${d.toLocaleDateString('uk-UA')}`;
+}
+
+function nowTime() {
+  return new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+}
+
+function daysBetween(start, end) {
+  return Math.floor((new Date(end) - new Date(start)) / 86400000);
+}
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function isMedActive(med, dateStr) {
+  if (!med.startDate) return true;
+  const start = new Date(med.startDate);
+  const date = new Date(dateStr);
+  if (date < start) return false;
+  if (med.duration === null) return true;
+  const endDate = new Date(start);
+  endDate.setDate(endDate.getDate() + med.duration);
+  return date < endDate;
+}
+
+function getMedProgress(med, dateStr) {
+  if (!med.startDate) return null;
+  const start = new Date(med.startDate);
+  const date = new Date(dateStr);
+  const daysPassed = Math.floor((date - start) / 86400000) + 1;
+  if (med.duration === null) return { current: daysPassed, total: null, permanent: true };
+  return { current: daysPassed, total: med.duration, permanent: false };
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// ============================================
+// РЕНДЕР СЬОГОДНІШНЬОГО ДНЯ
+// ============================================
+function renderToday() {
+  document.getElementById('currentDate').textContent = formatDateLong();
+  const today = todayKey();
+  if (!state.history[today]) state.history[today] = {};
+
+  const morningContainer = document.getElementById('morningMeds');
+  const eveningContainer = document.getElementById('eveningMeds');
+  morningContainer.innerHTML = '';
+  eveningContainer.innerHTML = '';
+
+  let totalDoses = 0, takenDoses = 0;
+
+  MEDICATIONS.forEach(med => {
+    if (!isMedActive(med, today)) return;
+    const progress = getMedProgress(med, today);
+
+    med.times.forEach(time => {
+      totalDoses++;
+      const key = `${med.id}_${time}`;
+      const taken = state.history[today][key] || false;
+      if (taken) takenDoses++;
+
+      const progressText = progress.permanent
+        ? `<span class="med-progress permanent">постійно (день ${progress.current})</span>`
+        : `<span class="med-progress">день ${progress.current}/${progress.total}</span>`;
+
+      const html = `
+        <div class="med-item ${taken ? 'taken' : ''}" onclick="toggleMed('${med.id}', '${time}')">
+          <div class="checkbox"></div>
+          <div class="med-info">
+            <div class="med-name">${med.name} — ${med.dose}</div>
+            <div class="med-meta">${med.times.length === 2 ? '2 р/д' : '1 р/д'} · ${med.unit}</div>
+          </div>
+          ${progressText}
+        </div>`;
+      if (time === 'morning') morningContainer.insertAdjacentHTML('beforeend', html);
+      else eveningContainer.insertAdjacentHTML('beforeend', html);
+    });
+  });
+
+  document.getElementById('statToday').textContent = `${takenDoses}/${totalDoses}`;
+  const pct = totalDoses ? Math.round(takenDoses / totalDoses * 100) : 0;
+  document.getElementById('statTodayBar').style.width = pct + '%';
+  document.getElementById('todayStats').textContent = `Прийнято ${takenDoses}/${totalDoses} (${pct}%)`;
+}
+
+function toggleMed(medId, time) {
+  const today = todayKey();
+  if (!state.history[today]) state.history[today] = {};
+  const key = `${medId}_${time}`;
+  const wasTaken = state.history[today][key];
+  state.history[today][key] = !wasTaken;
+
+  const med = MEDICATIONS.find(m => m.id === medId);
+  if (med && state.stock[medId] !== undefined && state.stock[medId] !== '') {
+    const current = parseFloat(state.stock[medId]) || 0;
+    state.stock[medId] = wasTaken ? current + 1 : Math.max(0, current - 1);
+  }
+
+  saveData();
+  renderAll();
+
+  if (!wasTaken) sendTelegramTake(med, time);
+  syncToSheet(false);
+}
+
+function markAll(time, taken) {
+  const today = todayKey();
+  if (!state.history[today]) state.history[today] = {};
+  MEDICATIONS.forEach(med => {
+    if (!isMedActive(med, today)) return;
+    if (med.times.includes(time)) {
+      const key = `${med.id}_${time}`;
+      const wasTaken = state.history[today][key];
+      if (wasTaken !== taken) {
+        state.history[today][key] = taken;
+        if (state.stock[med.id] !== undefined && state.stock[med.id] !== '') {
+          const current = parseFloat(state.stock[med.id]) || 0;
+          state.stock[med.id] = taken ? Math.max(0, current - 1) : current + 1;
+        }
+      }
+    }
+  });
+  saveData();
+  renderAll();
+  if (taken) sendTelegramBulk(time);
+  syncToSheet(false);
+}
+
+// ============================================
+// ЗДОРОВʼЯ: ЦУКОР І ВАГА
+// ============================================
+function getTodayHealth() {
+  const today = todayKey();
+  if (!state.health[today]) state.health[today] = { sugar: [], weight: null };
+  if (!state.health[today].sugar) state.health[today].sugar = [];
+  return state.health[today];
+}
+
+function renderHealth() {
+  const h = getTodayHealth();
+
+  // Цукор
+  const list = document.getElementById('sugarList');
+  list.innerHTML = '';
+  if (h.sugar.length === 0) {
+    list.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; padding: 4px 0;">Замірів ще немає</div>';
+  }
+  h.sugar.forEach((s, idx) => {
+    const norm = SUGAR_NORMS[s.tag] || SUGAR_NORMS['Інше'];
+    let cls = '';
+    if (s.value > norm.high) cls = 'high';
+    else if (s.value < norm.low) cls = 'low';
+    list.insertAdjacentHTML('beforeend', `
+      <div class="sugar-entry ${cls}">
+        <span><span class="val">${s.value}</span> <span style="color:var(--text-muted);font-size:11px;">ммоль/л</span></span>
+        <span class="tag">${s.tag}</span>
+        <span style="color:var(--text-muted);font-size:11px;">${s.time}</span>
+        <span class="del" onclick="deleteSugar(${idx})">✕</span>
+      </div>`);
+  });
+
+  // Підсумок цукру
+  const summary = document.getElementById('sugarSummary');
+  if (h.sugar.length > 0) {
+    const vals = h.sugar.map(s => s.value);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const avg = (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1);
+    summary.innerHTML = `
+      <span>Замірів: <b>${vals.length}</b></span>
+      <span>Мін: <b>${min}</b></span>
+      <span>Макс: <b>${max}</b></span>
+      <span>Середнє: <b>${avg}</b></span>`;
+  } else {
+    summary.innerHTML = '';
+  }
+
+  // Вага
+  const wDisplay = document.getElementById('weightDisplay');
+  const wTrend = document.getElementById('weightTrend');
+  if (h.weight) {
+    wDisplay.textContent = h.weight + ' кг';
+    document.getElementById('weightValue').value = h.weight;
+    // тренд за 7 днів
+    const prev = findPreviousWeight(7);
+    if (prev !== null) {
+      const diff = (h.weight - prev).toFixed(1);
+      if (diff > 0) { wTrend.textContent = `▲ +${diff} кг за тиждень`; wTrend.className = 'weight-trend up'; }
+      else if (diff < 0) { wTrend.textContent = `▼ ${diff} кг за тиждень`; wTrend.className = 'weight-trend down'; }
+      else { wTrend.textContent = '— без змін за тиждень'; wTrend.className = 'weight-trend'; }
+    } else {
+      wTrend.textContent = '';
+    }
+  } else {
+    wDisplay.textContent = '— кг';
+    wTrend.textContent = '';
+  }
+}
+
+function findPreviousWeight(daysBack) {
+  for (let i = 1; i <= daysBack + 14; i++) {
+    const date = addDays(todayKey(), -i);
+    if (state.health[date] && state.health[date].weight) {
+      return state.health[date].weight;
+    }
+  }
+  return null;
+}
+
+function addSugar() {
+  const valEl = document.getElementById('sugarValue');
+  const value = parseFloat(valEl.value);
+  if (!value || value <= 0) { showToast('Введи коректне значення цукру', true); return; }
+  const tag = document.getElementById('sugarTag').value;
+  const h = getTodayHealth();
+  h.sugar.push({ value, tag, time: nowTime() });
+  valEl.value = '';
+  saveData();
+  renderHealth();
+  renderHistory();
+
+  // Telegram
+  const norm = SUGAR_NORMS[tag] || SUGAR_NORMS['Інше'];
+  let mark = '';
+  if (value > norm.high) mark = ' ⚠️ підвищений';
+  else if (value < norm.low) mark = ' ⚠️ знижений';
+  sendTelegram(`🩸 <b>${nowTime()}</b> Замір цукру\n${value} ммоль/л (${tag})${mark}`);
+  syncToSheet(false);
+}
+
+function deleteSugar(idx) {
+  const h = getTodayHealth();
+  h.sugar.splice(idx, 1);
+  saveData();
+  renderHealth();
+  renderHistory();
+  syncToSheet(false);
+}
+
+function saveWeight() {
+  const valEl = document.getElementById('weightValue');
+  const value = parseFloat(valEl.value);
+  if (!value || value <= 0) { showToast('Введи коректну вагу', true); return; }
+  const h = getTodayHealth();
+  h.weight = value;
+  saveData();
+  renderHealth();
+  renderHistory();
+  showToast('Вагу збережено ✓');
+  sendTelegram(`⚖️ <b>${nowTime()}</b> Замір ваги\n${value} кг`);
+  syncToSheet(false);
+}
+
+// ============================================
+// ЗАЛИШКИ
+// ============================================
+function renderStock() {
+  const tbody = document.getElementById('stockTable');
+  tbody.innerHTML = '';
+  MEDICATIONS.forEach(med => {
+    const stock = state.stock[med.id] !== undefined ? state.stock[med.id] : '';
+    const stockNum = parseFloat(stock) || 0;
+    const daysLeft = stockNum && med.dailyDose ? Math.floor(stockNum / med.dailyDose) : 0;
+    const endDate = daysLeft > 0 ? formatDate(addDays(todayKey(), daysLeft)) : '—';
+
+    let daysClass = 'ok';
+    if (daysLeft > 0 && daysLeft <= 5) daysClass = 'urgent';
+    else if (daysLeft > 0 && daysLeft <= 10) daysClass = 'warning';
+
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>
+          <div>${med.name}</div>
+          <div style="font-size: 11px; color: var(--text-muted);">${med.dose}</div>
+        </td>
+        <td>
+          <input type="number" class="stock-input" min="0" step="0.5"
+                 value="${stock}" onchange="updateStock('${med.id}', this.value)" placeholder="—">
+          <span style="font-size: 11px; color: var(--text-muted);">${med.unit}</span>
+        </td>
+        <td>${med.dailyDose} ${med.unit}</td>
+        <td>
+          ${daysLeft > 0
+            ? `<div class="days-left ${daysClass}">${daysLeft} дн.</div>
+               <div style="font-size: 11px; color: var(--text-muted);">до ${endDate}</div>`
+            : '<span style="color: var(--text-muted);">—</span>'}
+        </td>
+      </tr>`);
+  });
+  renderStockAlerts();
+}
+
+function updateStock(medId, value) {
+  state.stock[medId] = value === '' ? '' : parseFloat(value);
+  saveData();
+  renderStock();
+}
+
+function recalculateStock() {
+  showToast('Залишки віднімаються автоматично при прийомі. Введи актуальні значення вручну за потреби.');
+}
+
+function renderStockAlerts() {
+  const container = document.getElementById('alertContainer');
+  container.innerHTML = '';
+  MEDICATIONS.forEach(med => {
+    const stock = parseFloat(state.stock[med.id]) || 0;
+    if (!stock || !med.dailyDose) return;
+    const daysLeft = Math.floor(stock / med.dailyDose);
+    if (daysLeft <= 5 && daysLeft > 0) {
+      const div = document.createElement('div');
+      div.className = 'alert-banner active' + (daysLeft <= 2 ? ' danger' : '');
+      div.innerHTML = `⚠️ <b>${med.name}</b> закінчується через ${daysLeft} дн. (${formatDate(addDays(todayKey(), daysLeft))})`;
+      container.appendChild(div);
+    }
+  });
+}
+
+function getLowStockMeds() {
+  const low = [];
+  MEDICATIONS.forEach(med => {
+    const stock = parseFloat(state.stock[med.id]) || 0;
+    if (!stock || !med.dailyDose) return;
+    const daysLeft = Math.floor(stock / med.dailyDose);
+    if (daysLeft <= 5 && daysLeft > 0) low.push({ name: med.name, daysLeft });
+  });
+  return low;
+}
+
+// ============================================
+// СТАТИСТИКА
+// ============================================
+function renderStats() {
+  let weekTotal = 0, weekTaken = 0;
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(todayKey(), -i);
+    const dayData = getDayStats(date);
+    weekTotal += dayData.total;
+    weekTaken += dayData.taken;
+  }
+  document.getElementById('statWeek').textContent = (weekTotal ? Math.round(weekTaken / weekTotal * 100) : 0) + '%';
+
+  const earliestStart = MEDICATIONS.reduce((min, m) => {
+    if (!m.startDate) return min;
+    return !min || m.startDate < min ? m.startDate : min;
+  }, null);
+  if (earliestStart) {
+    document.getElementById('statDays').textContent = daysBetween(earliestStart, todayKey()) + 1;
+  }
+}
+
+function getDayStats(dateStr) {
+  let total = 0, taken = 0;
+  MEDICATIONS.forEach(med => {
+    if (!isMedActive(med, dateStr)) return;
+    med.times.forEach(time => {
+      total++;
+      if (state.history[dateStr] && state.history[dateStr][`${med.id}_${time}`]) taken++;
+    });
+  });
+  return { total, taken };
+}
+
+// ============================================
+// ІСТОРІЯ
+// ============================================
+let historyExpanded = false;
+
+function toggleHistory() {
+  historyExpanded = !historyExpanded;
+  document.getElementById('historyToggle').textContent = historyExpanded ? 'Згорнути' : 'Показати все';
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('historyList');
+  container.innerHTML = '';
+
+  const allDates = new Set([...Object.keys(state.history), ...Object.keys(state.health)]);
+  const dates = [...allDates].sort().reverse();
+  const limit = historyExpanded ? dates.length : 7;
+  const today = todayKey();
+  let shown = 0;
+
+  dates.forEach(date => {
+    if (date === today) return;
+    if (shown >= limit) return;
+    const stats = getDayStats(date);
+    const h = state.health[date];
+    const hasHealth = h && (h.weight || (h.sugar && h.sugar.length));
+    if (stats.total === 0 && !hasHealth) return;
+    shown++;
+
+    const pct = stats.total ? Math.round(stats.taken / stats.total * 100) : 0;
+    let icon = '✅';
+    if (pct < 100) icon = '⚠️';
+    if (pct < 50) icon = '❌';
+
+    const d = new Date(date);
+    const dayName = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][d.getDay()];
+
+    const item = document.createElement('div');
+    item.innerHTML = `
+      <div class="history-item" onclick="toggleDayDetails('${date}')">
+        <span class="history-date">${formatDate(date)} (${dayName})</span>
+        <span class="history-stats">${icon} ${stats.taken}/${stats.total} (${pct}%)</span>
+      </div>
+      <div class="history-details" id="details_${date}">
+        ${buildDayDetailsHtml(date)}
+      </div>`;
+    container.appendChild(item);
+  });
+
+  if (shown === 0) {
+    container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">Історія порожня</div>';
+  }
+}
+
+function buildDayDetailsHtml(date) {
+  let html = '<ul>';
+  MEDICATIONS.forEach(med => {
+    if (!isMedActive(med, date)) return;
+    med.times.forEach(time => {
+      const taken = state.history[date] && state.history[date][`${med.id}_${time}`];
+      const timeLabel = time === 'morning' ? '🌅' : '🌆';
+      html += `<li class="${taken ? 'taken' : 'missed'}">${timeLabel} ${med.name}</li>`;
+    });
+  });
+  html += '</ul>';
+
+  const h = state.health[date];
+  if (h && (h.weight || (h.sugar && h.sugar.length))) {
+    html += '<div class="history-health">';
+    if (h.sugar && h.sugar.length) {
+      html += '🩸 Цукор: ' + h.sugar.map(s => `${s.value} (${s.tag})`).join(', ') + '<br>';
+    }
+    if (h.weight) html += `⚖️ Вага: ${h.weight} кг`;
+    html += '</div>';
+  }
+  return html;
+}
+
+function toggleDayDetails(date) {
+  const el = document.getElementById('details_' + date);
+  if (el) el.classList.toggle('active');
+}
+
+// ============================================
+// КАЛЕНДАР
+// ============================================
+function renderCalendar() {
+  const container = document.getElementById('calendar');
+  container.innerHTML = '';
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+  const monthNames = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  document.getElementById('calendarMonth').textContent = `${monthNames[month]} ${year}`;
+
+  ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'].forEach(h => {
+    const el = document.createElement('div');
+    el.className = 'calendar-header';
+    el.textContent = h;
+    container.appendChild(el);
+  });
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  let startWeekday = firstDay.getDay() - 1;
+  if (startWeekday < 0) startWeekday = 6;
+
+  for (let i = 0; i < startWeekday; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'calendar-day empty';
+    container.appendChild(empty);
+  }
+
+  const today = todayKey();
+  for (let day = 1; day <= lastDay.getDate(); day++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'calendar-day';
+    cell.textContent = day;
+    if (dateStr === today) cell.classList.add('today');
+
+    if (dateStr <= today) {
+      const stats = getDayStats(dateStr);
+      if (stats.total > 0) {
+        if (stats.taken === stats.total) cell.classList.add('full');
+        else if (stats.taken > 0) cell.classList.add('partial');
+        else if (dateStr < today) cell.classList.add('missed');
+      }
+    }
+    cell.title = dateStr;
+    container.appendChild(cell);
+  }
+}
+
+function changeMonth(delta) {
+  calendarDate.setMonth(calendarDate.getMonth() + delta);
+  renderCalendar();
+}
+
+// ============================================
+// НАЛАШТУВАННЯ
+// ============================================
+function openSettings() {
+  document.getElementById('botToken').value = state.settings.botToken || '';
+  document.getElementById('chatId').value = state.settings.chatId || '';
+  document.getElementById('reportChatIds').value = state.settings.reportChatIds || '';
+  document.getElementById('sheetUrl').value = state.settings.sheetUrl || '';
+  document.getElementById('settingsModal').classList.add('active');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('active');
+}
+
+function saveSettings() {
+  state.settings.botToken = document.getElementById('botToken').value.trim();
+  state.settings.chatId = document.getElementById('chatId').value.trim();
+  state.settings.reportChatIds = document.getElementById('reportChatIds').value.trim();
+  state.settings.sheetUrl = document.getElementById('sheetUrl').value.trim();
+  saveData();
+  closeSettings();
+  updateSyncStatus();
+  showToast('Налаштування збережено ✓');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `meds_backup_${todayKey()}.json`;
+  a.click();
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      state = JSON.parse(e.target.result);
+      saveData();
+      location.reload();
+    } catch (err) {
+      showToast('Помилка імпорту: ' + err.message, true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetAll() {
+  if (!confirm('Видалити ВСІ дані (історію, здоровʼя, залишки, налаштування)? Це незворотно!')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ============================================
+// TELEGRAM
+// ============================================
+async function sendTelegram(text, chatIdOverride) {
+  const { botToken, chatId } = state.settings;
+  const target = chatIdOverride || chatId;
+  if (!botToken || !target) {
+    console.warn('Telegram не налаштовано');
+    return false;
+  }
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: target, text, parse_mode: 'HTML' })
+    });
+    const data = await res.json();
+    return data.ok;
+  } catch (err) {
+    console.error('Telegram error:', err);
+    return false;
+  }
+}
+
+function getReportRecipients() {
+  const ids = (state.settings.reportChatIds || '')
+    .split(/[\n,;]+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (ids.length === 0 && state.settings.chatId) ids.push(state.settings.chatId);
+  return [...new Set(ids)];
+}
+
+async function testTelegram() {
+  state.settings.botToken = document.getElementById('botToken').value.trim();
+  state.settings.chatId = document.getElementById('chatId').value.trim();
+  const ok = await sendTelegram('🧪 <b>Тест успішний!</b>\nТрекер ліків готовий до роботи 💊');
+  showToast(ok ? '✓ Повідомлення надіслано!' : '✗ Помилка. Перевір токен і chat_id.', !ok);
+}
+
+function sendTelegramTake(med, time) {
+  const timeIcon = time === 'morning' ? '🌅' : '🌆';
+  const timeLabel = time === 'morning' ? 'ранок' : 'вечір';
+  const stats = getDayStats(todayKey());
+  sendTelegram(`💊 <b>${nowTime()}</b> ${timeIcon} ${timeLabel}\n✓ ${med.name} — ${med.dose}\n\n📊 Сьогодні: ${stats.taken}/${stats.total}`);
+}
+
+function sendTelegramBulk(time) {
+  const timeIcon = time === 'morning' ? '🌅' : '🌆';
+  const timeLabel = time === 'morning' ? 'ранок' : 'вечір';
+  const stats = getDayStats(todayKey());
+  sendTelegram(`💊 <b>${nowTime()}</b> ${timeIcon} ${timeLabel}\n✓ Прийнято всі ${timeLabel}і препарати\n\n📊 Сьогодні: ${stats.taken}/${stats.total}`);
+}
+
+// ============================================
+// GOOGLE SHEETS СИНХРОНІЗАЦІЯ
+// ============================================
+function buildDayPayload(date) {
+  const stats = getDayStats(date);
+  const h = state.health[date] || { sugar: [], weight: null };
+  const sugar = h.sugar || [];
+
+  const sugarText = sugar.map(s => `${s.value} (${s.tag}, ${s.time})`).join('; ');
+  const sugarVals = sugar.map(s => s.value);
+  const sugarMin = sugarVals.length ? Math.min(...sugarVals) : '';
+  const sugarMax = sugarVals.length ? Math.max(...sugarVals) : '';
+  const sugarAvg = sugarVals.length ? (sugarVals.reduce((a,b)=>a+b,0)/sugarVals.length).toFixed(1) : '';
+
+  // прийнято ранок / вечір (текстом)
+  let morningList = [], eveningList = [], missedList = [];
+  MEDICATIONS.forEach(med => {
+    if (!isMedActive(med, date)) return;
+    med.times.forEach(time => {
+      const taken = state.history[date] && state.history[date][`${med.id}_${time}`];
+      if (taken) {
+        if (time === 'morning') morningList.push(med.name);
+        else eveningList.push(med.name);
+      } else {
+        missedList.push(`${med.name} (${time === 'morning' ? 'ранок' : 'вечір'})`);
+      }
+    });
+  });
+
+  return {
+    date: date,
+    sugarText: sugarText,
+    sugarMin: sugarMin,
+    sugarMax: sugarMax,
+    sugarAvg: sugarAvg,
+    weight: h.weight || '',
+    takenMorning: morningList.join(', '),
+    takenEvening: eveningList.join(', '),
+    takenTotal: stats.taken,
+    totalDoses: stats.total,
+    compliance: stats.total ? Math.round(stats.taken/stats.total*100) : 0,
+    missed: missedList.join('; ')
+  };
+}
+
+let syncTimer = null;
+async function syncToSheet(showFeedback) {
+  const url = state.settings.sheetUrl;
+  if (!url) {
+    if (showFeedback) showToast('Спочатку вкажи URL Google Sheets у налаштуваннях', true);
+    return;
+  }
+  // дебаунс — щоб не слати запит на кожен клік
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => doSync(url, showFeedback), showFeedback ? 0 : 1500);
+}
+
+async function doSync(url, showFeedback) {
+  updateSyncStatus('pending');
+  const payload = buildDayPayload(todayKey());
+  try {
+    // text/plain — щоб уникнути CORS preflight для Apps Script
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    updateSyncStatus('ok');
+    if (showFeedback) showToast('☁ Синхронізовано з Google Sheets ✓');
+  } catch (err) {
+    updateSyncStatus('error');
+    if (showFeedback) showToast('✗ Помилка синхронізації', true);
+    console.error('Sheet sync error:', err);
+  }
+}
+
+async function testSheet() {
+  state.settings.sheetUrl = document.getElementById('sheetUrl').value.trim();
+  if (!state.settings.sheetUrl) { showToast('Введи URL Web App', true); return; }
+  await doSync(state.settings.sheetUrl, true);
+}
+
+function updateSyncStatus(status) {
+  const el = document.getElementById('syncStatus');
+  if (!state.settings.sheetUrl) {
+    el.className = 'sync-status off';
+    el.textContent = '☁ Google Sheets: не налаштовано';
+    return;
+  }
+  if (status === 'ok') {
+    el.className = 'sync-status ok';
+    el.textContent = `☁ Синхронізовано ${nowTime()}`;
+  } else if (status === 'pending') {
+    el.className = 'sync-status pending';
+    el.textContent = '☁ Синхронізація...';
+  } else if (status === 'error') {
+    el.className = 'sync-status error';
+    el.textContent = '☁ Помилка синхронізації';
+  } else {
+    el.className = 'sync-status ok';
+    el.textContent = '☁ Google Sheets підключено';
+  }
+}
+
+// ============================================
+// НАГАДУВАННЯ + ВЕЧІРНІЙ ЗВІТ
+// ============================================
+function requestNotificationPermission() {
+  if ('Notification' in window) {
+    Notification.requestPermission().then(p => showToast('Дозвіл сповіщень: ' + p));
+  } else {
+    showToast('Браузер не підтримує сповіщення', true);
+  }
+}
+
+function showBrowserNotification(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
+function getMissingMeds(date, time) {
+  const missing = [];
+  MEDICATIONS.forEach(med => {
+    if (!isMedActive(med, date)) return;
+    if (!med.times.includes(time)) return;
+    if (!state.history[date] || !state.history[date][`${med.id}_${time}`]) missing.push(med);
+  });
+  return missing;
+}
+
+function checkReminders() {
+  const now = new Date();
+  const hour = now.getHours();
+  const today = todayKey();
+  if (!state.lastReminderSent) state.lastReminderSent = {};
+
+  // РАНОК — після 10:00
+  if (hour >= 10 && !state.lastReminderSent[`${today}_morning`]) {
+    const missing = getMissingMeds(today, 'morning');
+    if (missing.length > 0) {
+      sendTelegram(`🔔 <b>Не відмічено ранковий прийом!</b>\n\nЗалишилось:\n${missing.map(m => `• ${m.name} — ${m.dose}`).join('\n')}`);
+      showBrowserNotification('🔔 Ранковий прийом', `Не прийнято: ${missing.map(m => m.name).join(', ')}`);
+    }
+    state.lastReminderSent[`${today}_morning`] = true;
+    saveData();
+  }
+
+  // ВЕЧІР — після 21:00
+  if (hour >= 21 && !state.lastReminderSent[`${today}_evening`]) {
+    const missing = getMissingMeds(today, 'evening');
+    if (missing.length > 0) {
+      sendTelegram(`🔔 <b>Не відмічено вечірній прийом!</b>\n\nЗалишилось:\n${missing.map(m => `• ${m.name} — ${m.dose}`).join('\n')}`);
+      showBrowserNotification('🔔 Вечірній прийом', `Не прийнято: ${missing.map(m => m.name).join(', ')}`);
+    }
+    state.lastReminderSent[`${today}_evening`] = true;
+    saveData();
+  }
+
+  // НАГАДУВАННЯ ПРО ЗВІТ — о 21:00 і 23:00, якщо звіт ще не надіслано вручну
+  if (hour >= 21 && !isReportSentToday() && !state.lastReminderSent[`${today}_reportRemind21`]) {
+    sendTelegram(`📨 <b>Нагадування</b>\nНе забудь відправити звіт за день — натисни кнопку «Відправити звіт» у трекері.`);
+    showBrowserNotification('📨 Звіт за день', 'Не забудь відправити звіт — натисни кнопку у трекері');
+    state.lastReminderSent[`${today}_reportRemind21`] = true;
+    saveData();
+  }
+  if (hour >= 23 && !isReportSentToday() && !state.lastReminderSent[`${today}_reportRemind23`]) {
+    sendTelegram(`⚠️ <b>Звіт за день досі не надіслано!</b>\nВідкрий трекер і натисни «Відправити звіт за день».`);
+    showBrowserNotification('⚠️ Звіт не надіслано', 'Відкрий трекер і натисни кнопку звіту');
+    state.lastReminderSent[`${today}_reportRemind23`] = true;
+    saveData();
+  }
+
+  // оновлюємо вигляд кнопки звіту (могла стати "due" після 21:00)
+  renderReportBlock();
+}
+
+function buildDailyReportText(date) {
+  const stats = getDayStats(date);
+  const pct = stats.total ? Math.round(stats.taken/stats.total*100) : 0;
+  const h = state.health[date] || { sugar: [], weight: null };
+
+  let text = `📅 <b>Звіт за ${formatDate(date)}</b>\n\n`;
+  text += `💊 <b>Ліки:</b> ${stats.taken}/${stats.total} (${pct}%)\n`;
+
+  // пропущені
+  const missed = [];
+  MEDICATIONS.forEach(med => {
+    if (!isMedActive(med, date)) return;
+    med.times.forEach(time => {
+      if (!state.history[date] || !state.history[date][`${med.id}_${time}`]) {
+        missed.push(`${med.name} (${time === 'morning' ? 'ранок' : 'вечір'})`);
+      }
+    });
+  });
+  if (missed.length) text += `   ❌ Пропущено: ${missed.join(', ')}\n`;
+  else text += `   ✅ Все прийнято\n`;
+
+  // цукор
+  if (h.sugar && h.sugar.length) {
+    text += `\n🩸 <b>Цукор:</b>\n`;
+    h.sugar.forEach(s => {
+      text += `   • ${s.value} ммоль/л — ${s.tag} (${s.time})\n`;
+    });
+    const vals = h.sugar.map(s => s.value);
+    const avg = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+    text += `   Середнє: ${avg} ммоль/л\n`;
+  } else {
+    text += `\n🩸 <b>Цукор:</b> замірів не було\n`;
+  }
+
+  // вага
+  if (h.weight) {
+    text += `\n⚖️ <b>Вага:</b> ${h.weight} кг`;
+    const prev = findPreviousWeight(7);
+    if (prev !== null) {
+      const diff = (h.weight - prev).toFixed(1);
+      if (diff != 0) text += ` (${diff > 0 ? '+' : ''}${diff} кг за тиждень)`;
+    }
+    text += `\n`;
+  } else {
+    text += `\n⚖️ <b>Вага:</b> не виміряна\n`;
+  }
+
+  // залишки ліків
+  const low = getLowStockMeds();
+  if (low.length) {
+    text += `\n⚠️ <b>Закінчуються ліки:</b>\n`;
+    low.forEach(m => text += `   • ${m.name} — ${m.daysLeft} дн.\n`);
+  }
+
+  return text;
+}
+
+async function sendDailyReport(date, isManual) {
+  const text = buildDailyReportText(date);
+  const recipients = getReportRecipients();
+  if (recipients.length === 0) {
+    showToast('Не вказано жодного отримувача звіту', true);
+    return false;
+  }
+  let allOk = true;
+  for (const id of recipients) {
+    const ok = await sendTelegram(text, id);
+    if (!ok) allOk = false;
+  }
+  // фінальна синхронізація дня в Sheets
+  syncToSheet(false);
+  // позначаємо звіт як надісланий
+  if (allOk) {
+    if (!state.reportSent) state.reportSent = {};
+    state.reportSent[date] = nowTime();
+    saveData();
+    renderReportBlock();
+  }
+  return allOk;
+}
+
+async function manualSendReport() {
+  const today = todayKey();
+  if (state.reportSent && state.reportSent[today]) {
+    if (!confirm('Звіт за сьогодні вже надіслано. Надіслати ще раз?')) return;
+  }
+  const btn = document.getElementById('reportBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Надсилання...';
+  const ok = await sendDailyReport(today, true);
+  btn.disabled = false;
+  if (ok) {
+    showToast('✅ Звіт надіслано всім отримувачам');
+  } else {
+    showToast('✗ Помилка надсилання. Перевір налаштування Telegram', true);
+    renderReportBlock();
+  }
+}
+
+function isReportSentToday() {
+  const today = todayKey();
+  return !!(state.reportSent && state.reportSent[today]);
+}
+
+function renderReportBlock() {
+  const today = todayKey();
+  const btn = document.getElementById('reportBtn');
+  const info = document.getElementById('reportInfo');
+  const warning = document.getElementById('reportWarning');
+  const section = document.getElementById('reportSection');
+  const hour = new Date().getHours();
+  const recipients = getReportRecipients();
+
+  if (isReportSentToday()) {
+    btn.className = 'btn report-btn sent';
+    btn.textContent = `✅ Звіт надіслано о ${state.reportSent[today]}`;
+    info.textContent = `Звіт за ${formatDate(today)} відправлено отримувачам: ${recipients.length}. Можна закривати сторінку.`;
+    warning.className = 'report-warning';
+    section.classList.add('sent');
+  } else {
+    section.classList.remove('sent');
+    // після 21:00 кнопка стає помаранчевою і "пульсує"
+    if (hour >= 21) {
+      btn.className = 'btn report-btn due';
+      warning.className = 'report-warning active';
+      info.textContent = `⏰ Час відправити звіт за ${formatDate(today)}. Отримувачів: ${recipients.length || '0 — додай у налаштуваннях'}.`;
+    } else {
+      btn.className = 'btn report-btn';
+      warning.className = 'report-warning';
+      info.textContent = `Звіт за ${formatDate(today)} ще не надіслано. Рекомендовано відправляти ввечері (після 21:00). Отримувачів: ${recipients.length || '0'}.`;
+    }
+  }
+}
+
+// Попередження при закритті сторінки, якщо звіт не надіслано
+window.addEventListener('beforeunload', function(e) {
+  if (!isReportSentToday()) {
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  }
+});
+
+// ============================================
+// РЕНДЕР ВСЬОГО
+// ============================================
+function renderAll() {
+  renderToday();
+  renderHealth();
+  renderStock();
+  renderStats();
+  renderHistory();
+  renderCalendar();
+  renderReportBlock();
+}
+
+// ============================================
+// ІНІЦІАЛІЗАЦІЯ
+// ============================================
+function init() {
+  renderAll();
+  updateSyncStatus();
+  checkReminders();
+  setInterval(checkReminders, 5 * 60 * 1000);
+  setInterval(() => {
+    if (todayKey() !== document.body.dataset.lastDay) {
+      document.body.dataset.lastDay = todayKey();
+      renderAll();
+    }
+  }, 60 * 1000);
+  document.body.dataset.lastDay = todayKey();
+}
+
+init();
+</script>
+
+</body>
+</html>
