@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#00bfa5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
 <title>💊 Трекер прийому ліків</title>
 <style>
 :root {
@@ -1504,7 +1507,10 @@ function updateSyncStatus(status) {
 // ============================================
 function requestNotificationPermission() {
   if ('Notification' in window) {
-    Notification.requestPermission().then(p => showToast('Дозвіл сповіщень: ' + p));
+    Notification.requestPermission().then(async p => {
+      showToast('Дозвіл сповіщень: ' + p);
+      if (p === 'granted') await registerPeriodicReminder();
+    });
   } else {
     showToast('Браузер не підтримує сповіщення', true);
   }
@@ -1729,12 +1735,38 @@ function renderAll() {
 }
 
 // ============================================
+// SERVICE WORKER (офлайн + фонові нагадування)
+// ============================================
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    await navigator.serviceWorker.register('sw.js');
+    if (Notification.permission === 'granted') await registerPeriodicReminder();
+  } catch (err) {
+    console.warn('SW реєстрація не вдалась:', err);
+  }
+}
+
+// Periodic Background Sync: best-effort, лише для встановленого PWA (Chrome/Android),
+// інтервал контролює браузер. Основний механізм нагадувань — checkReminders() у вкладці.
+async function registerPeriodicReminder() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (!('periodicSync' in reg)) return;
+    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+    if (status.state !== 'granted') return;
+    await reg.periodicSync.register('meds-reminder', { minInterval: 12 * 60 * 60 * 1000 });
+  } catch (_) { /* не підтримується — ігноруємо */ }
+}
+
+// ============================================
 // ІНІЦІАЛІЗАЦІЯ
 // ============================================
 function init() {
   renderAll();
   updateSyncStatus();
   checkReminders();
+  registerServiceWorker();
   setInterval(checkReminders, 5 * 60 * 1000);
   setInterval(() => {
     if (todayKey() !== document.body.dataset.lastDay) {

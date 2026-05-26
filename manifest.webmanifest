@@ -1,0 +1,20 @@
+{
+  "name": "Трекер прийому ліків",
+  "short_name": "Ліки",
+  "description": "Трекер прийому ліків, цукру крові та ваги",
+  "lang": "uk",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1419",
+  "theme_color": "#00bfa5",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
