@@ -480,6 +480,47 @@ h1, h2, h3 { font-weight: 600; }
 .toast.show { transform: translateX(-50%) translateY(0); }
 .toast.error { border-color: var(--danger); }
 
+.course-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.course-name { font-size: 13px; color: var(--accent); font-weight: 600; margin-bottom: 8px; }
+.course-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.course-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+.course-fields input[type="text"],
+.course-fields input[type="number"],
+.course-fields input[type="date"] {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+}
+.course-fields input:focus { outline: none; border-color: var(--accent); }
+.course-fields .course-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.course-fields .course-check input { width: auto; }
+
 @media (max-width: 600px) {
   body { padding: 10px; padding-bottom: 80px; }
   .header h1 { font-size: 17px; }
@@ -666,6 +707,28 @@ h1, h2, h3 { font-weight: 600; }
     <input type="text" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
     <div class="settings-hint">Дані синхронізуються автоматично при кожному збереженні.</div>
 
+    <h3>GitHub — залишки ліків</h3>
+    <label>Репозиторій (owner/repo)</label>
+    <input type="text" id="ghRepo" placeholder="username/meds-tracker">
+    <label>Файл</label>
+    <input type="text" id="ghPath" placeholder="STOCK.md">
+    <label>Гілка</label>
+    <input type="text" id="ghBranch" placeholder="main">
+    <label>Token (fine-grained)</label>
+    <input type="password" id="ghToken" placeholder="github_pat_...">
+    <div class="settings-hint">Залишки автоматично зберігаються у файл на GitHub — його видно прямо в репозиторії. Токен зберігається лише у цьому браузері. Створи fine-grained token з доступом тільки до цього репозиторію і правом <b>Contents: Read and write</b>.</div>
+    <div class="test-btn-row">
+      <button class="btn btn-secondary" onclick="pushStockToGitHub(true)">⬆ Зберегти на GitHub</button>
+      <button class="btn btn-secondary" onclick="pullStockFromGitHub()">⬇ Завантажити з GitHub</button>
+    </div>
+
+    <h3>💊 Курс лікування</h3>
+    <div class="settings-hint">Скоригуй дозу, дату початку та тривалість курсу для кожного препарату. Тривалість порожня = постійний прийом. Зміни застосуються після «Зберегти».</div>
+    <div id="courseEditor"></div>
+    <div class="test-btn-row">
+      <button class="btn btn-secondary" onclick="resetCourse()">↺ Скинути курс до типового</button>
+    </div>
+
     <div class="test-btn-row">
       <button class="btn btn-secondary" onclick="testTelegram()">🧪 Тест Telegram</button>
       <button class="btn btn-secondary" onclick="testSheet()">🧪 Тест Sheets</button>
@@ -694,7 +757,7 @@ h1, h2, h3 { font-weight: 600; }
 // ============================================
 // КОНФІГУРАЦІЯ ЛІКІВ
 // ============================================
-const MEDICATIONS = [
+const MED_DEFAULTS = [
   { id: 'altsmerat', name: 'Альцмерат', dose: '1 фл.', times: ['morning'], startDate: '2026-05-15', duration: 20, dailyDose: 1, unit: 'фл' },
   { id: 'betagistin', name: 'Бетагістин-КВ', dose: '24 мг', times: ['morning', 'evening'], startDate: '2026-05-05', duration: 60, dailyDose: 2, unit: 'т' },
   { id: 'glineiro', name: 'Глінейро', dose: '1 капс.', times: ['morning', 'evening'], startDate: '2026-05-05', duration: 90, dailyDose: 2, unit: 'к' },
@@ -705,6 +768,17 @@ const MEDICATIONS = [
   { id: 'nebival', name: 'Небівал', dose: '5 мг', times: ['morning'], startDate: '2026-05-05', duration: null, dailyDose: 1, unit: 'т' },
   { id: 'glicofit', name: 'Гліцофіт', dose: '1 т.', times: ['morning', 'evening'], startDate: '2026-04-15', duration: 90, dailyDose: 2, unit: 'т' }
 ];
+
+// Курс лікування можна коригувати в налаштуваннях; зміни зберігаються в state.medsOverride
+let MEDICATIONS = MED_DEFAULTS.map(m => ({ ...m }));
+
+function buildMedications() {
+  const ov = (typeof state !== 'undefined' && state.medsOverride) ? state.medsOverride : {};
+  return MED_DEFAULTS.map(def => {
+    const o = ov[def.id];
+    return o ? { ...def, ...o } : { ...def };
+  });
+}
 
 // Референсні межі цукру (ммоль/л) для підсвічування
 const SUGAR_NORMS = {
@@ -726,8 +800,13 @@ function loadData() {
     // міграція зі старої версії
     if (!d.health) d.health = {};
     if (!d.reportSent) d.reportSent = {};
+    if (!d.medsOverride) d.medsOverride = {};
     if (!d.settings.reportChatIds) d.settings.reportChatIds = '';
     if (!d.settings.sheetUrl) d.settings.sheetUrl = '';
+    if (d.settings.ghRepo === undefined) d.settings.ghRepo = '';
+    if (d.settings.ghPath === undefined) d.settings.ghPath = 'STOCK.md';
+    if (d.settings.ghBranch === undefined) d.settings.ghBranch = 'main';
+    if (d.settings.ghToken === undefined) d.settings.ghToken = '';
     return d;
   }
   // спроба підтягнути дані зі старої версії v1
@@ -737,7 +816,8 @@ function loadData() {
     health: {},      // { 'YYYY-MM-DD': { sugar: [{value, tag, time}], weight: 84.5 } }
     reportSent: {},   // { 'YYYY-MM-DD': 'HH:MM' } — коли надіслано звіт
     stock: {},
-    settings: { botToken: '', chatId: '', reportChatIds: '', sheetUrl: '' },
+    medsOverride: {}, // { id: { dose, unit, startDate, duration, dailyDose, times } } — коригування курсу
+    settings: { botToken: '', chatId: '', reportChatIds: '', sheetUrl: '', ghRepo: '', ghPath: 'STOCK.md', ghBranch: 'main', ghToken: '' },
     lastReminderSent: {}
   };
   if (oldRaw) {
@@ -757,6 +837,7 @@ function saveData() {
 }
 
 let state = loadData();
+MEDICATIONS = buildMedications();
 let calendarDate = new Date();
 
 // ============================================
@@ -888,6 +969,7 @@ function toggleMed(medId, time) {
 
   if (!wasTaken) sendTelegramTake(med, time);
   syncToSheet(false);
+  syncStockToGitHub(false);
 }
 
 function markAll(time, taken) {
@@ -911,6 +993,7 @@ function markAll(time, taken) {
   renderAll();
   if (taken) sendTelegramBulk(time);
   syncToSheet(false);
+  syncStockToGitHub(false);
 }
 
 // ============================================
@@ -1081,6 +1164,7 @@ function updateStock(medId, value) {
   state.stock[medId] = value === '' ? '' : parseFloat(value);
   saveData();
   renderStock();
+  syncStockToGitHub(false);
 }
 
 function recalculateStock() {
@@ -1295,6 +1379,11 @@ function openSettings() {
   document.getElementById('chatId').value = state.settings.chatId || '';
   document.getElementById('reportChatIds').value = state.settings.reportChatIds || '';
   document.getElementById('sheetUrl').value = state.settings.sheetUrl || '';
+  document.getElementById('ghRepo').value = state.settings.ghRepo || '';
+  document.getElementById('ghPath').value = state.settings.ghPath || 'STOCK.md';
+  document.getElementById('ghBranch').value = state.settings.ghBranch || 'main';
+  document.getElementById('ghToken').value = state.settings.ghToken || '';
+  renderCourseEditor();
   document.getElementById('settingsModal').classList.add('active');
 }
 
@@ -1307,10 +1396,80 @@ function saveSettings() {
   state.settings.chatId = document.getElementById('chatId').value.trim();
   state.settings.reportChatIds = document.getElementById('reportChatIds').value.trim();
   state.settings.sheetUrl = document.getElementById('sheetUrl').value.trim();
+  state.settings.ghRepo = document.getElementById('ghRepo').value.trim();
+  state.settings.ghPath = document.getElementById('ghPath').value.trim() || 'STOCK.md';
+  state.settings.ghBranch = document.getElementById('ghBranch').value.trim() || 'main';
+  state.settings.ghToken = document.getElementById('ghToken').value.trim();
+  collectCourse();
   saveData();
   closeSettings();
   updateSyncStatus();
+  renderAll();
   showToast('Налаштування збережено ✓');
+}
+
+// ============================================
+// РЕДАКТОР КУРСУ ЛІКУВАННЯ
+// ============================================
+function escAttr(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function renderCourseEditor() {
+  const c = document.getElementById('courseEditor');
+  if (!c) return;
+  c.innerHTML = '';
+  MEDICATIONS.forEach(med => {
+    const morning = med.times.includes('morning');
+    const evening = med.times.includes('evening');
+    c.insertAdjacentHTML('beforeend', `
+      <div class="course-item" data-id="${med.id}">
+        <div class="course-name">${escAttr(med.name)}</div>
+        <div class="course-fields">
+          <label>Доза<input type="text" data-f="dose" value="${escAttr(med.dose)}"></label>
+          <label>На день<input type="number" step="0.5" min="0" data-f="dailyDose" value="${med.dailyDose ?? ''}"></label>
+          <label>Одиниця<input type="text" data-f="unit" value="${escAttr(med.unit)}"></label>
+          <label>Початок<input type="date" data-f="startDate" value="${escAttr(med.startDate)}"></label>
+          <label>Тривалість, дн<input type="number" min="0" data-f="duration" value="${med.duration ?? ''}" placeholder="постійно"></label>
+          <label class="course-check"><input type="checkbox" data-f="morning" ${morning ? 'checked' : ''}> Ранок</label>
+          <label class="course-check"><input type="checkbox" data-f="evening" ${evening ? 'checked' : ''}> Вечір</label>
+        </div>
+      </div>`);
+  });
+}
+
+function collectCourse() {
+  const items = document.querySelectorAll('#courseEditor .course-item');
+  if (!items.length) return;
+  if (!state.medsOverride) state.medsOverride = {};
+  items.forEach(item => {
+    const id = item.dataset.id;
+    const get = f => item.querySelector(`[data-f="${f}"]`);
+    const times = [];
+    if (get('morning').checked) times.push('morning');
+    if (get('evening').checked) times.push('evening');
+    const durRaw = get('duration').value.trim();
+    const dailyRaw = get('dailyDose').value.trim();
+    state.medsOverride[id] = {
+      dose: get('dose').value.trim(),
+      unit: get('unit').value.trim(),
+      startDate: get('startDate').value || null,
+      duration: durRaw === '' ? null : Math.max(0, parseInt(durRaw, 10) || 0),
+      dailyDose: dailyRaw === '' ? 0 : Math.max(0, parseFloat(dailyRaw) || 0),
+      times: times.length ? times : ['morning']
+    };
+  });
+  MEDICATIONS = buildMedications();
+}
+
+function resetCourse() {
+  if (!confirm('Скинути всі зміни курсу до типових значень?')) return;
+  state.medsOverride = {};
+  MEDICATIONS = buildMedications();
+  saveData();
+  renderCourseEditor();
+  renderAll();
+  showToast('Курс скинуто до типового ✓');
 }
 
 function exportData() {
@@ -1499,6 +1658,134 @@ function updateSyncStatus(status) {
   } else {
     el.className = 'sync-status ok';
     el.textContent = '☁ Google Sheets підключено';
+  }
+}
+
+// ============================================
+// GITHUB: ЗБЕРЕЖЕННЯ ЗАЛИШКІВ У ФАЙЛ
+// ============================================
+function ghConfigured() {
+  const s = state.settings;
+  return !!(s.ghRepo && s.ghToken && s.ghPath);
+}
+
+function ghHeaders() {
+  return {
+    'Authorization': 'Bearer ' + state.settings.ghToken,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+}
+
+function ghContentsUrl() {
+  const repo = state.settings.ghRepo.trim().replace(/^\/+|\/+$/g, '');
+  const path = state.settings.ghPath.trim().replace(/^\/+/, '');
+  return `https://api.github.com/repos/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+function b64encodeUtf8(str) {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+}
+function b64decodeUtf8(b64) {
+  return new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+}
+
+function buildStockMarkdown() {
+  let md = `# 💊 Залишки ліків\n\nОновлено: ${formatDate(todayKey())} ${nowTime()}\n\n`;
+  md += `| Препарат | Залишок | На день | Вистачить |\n| --- | --- | --- | --- |\n`;
+  MEDICATIONS.forEach(med => {
+    const raw = state.stock[med.id];
+    const has = raw !== undefined && raw !== '';
+    const stockNum = parseFloat(raw) || 0;
+    const daysLeft = has && med.dailyDose ? Math.floor(stockNum / med.dailyDose) : 0;
+    const stockCell = has ? `${stockNum} ${med.unit}` : '—';
+    const lastCell = daysLeft > 0 ? `${daysLeft} дн (до ${formatDate(addDays(todayKey(), daysLeft))})` : '—';
+    md += `| ${med.name} | ${stockCell} | ${med.dailyDose} ${med.unit} | ${lastCell} |\n`;
+  });
+  md += `\n> Файл оновлюється автоматично трекером ліків.\n`;
+  return md;
+}
+
+function parseStockMarkdown(md) {
+  const nameToId = {};
+  MEDICATIONS.forEach(m => { nameToId[m.name.trim()] = m.id; });
+  const result = {};
+  md.split('\n').forEach(line => {
+    if (!line.trim().startsWith('|')) return;
+    const cells = line.split('|').map(c => c.trim());
+    cells.shift(); cells.pop(); // прибираємо порожні краї
+    if (cells.length < 2) return;
+    const id = nameToId[cells[0]];
+    if (!id) return; // заголовок/розділювач/невідома назва
+    const num = parseFloat(cells[1]);
+    if (!isNaN(num)) result[id] = num;
+  });
+  return result;
+}
+
+async function ghGetSha() {
+  const url = `${ghContentsUrl()}?ref=${encodeURIComponent(state.settings.ghBranch || 'main')}`;
+  const res = await fetch(url, { headers: ghHeaders() });
+  if (res.status === 200) { const d = await res.json(); return d.sha; }
+  return null;
+}
+
+let ghTimer = null;
+function syncStockToGitHub(showFeedback) {
+  if (!ghConfigured()) {
+    if (showFeedback) showToast('Спочатку заповни налаштування GitHub', true);
+    return;
+  }
+  if (ghTimer) clearTimeout(ghTimer);
+  ghTimer = setTimeout(() => pushStockToGitHub(showFeedback), showFeedback ? 0 : 2500);
+}
+
+async function pushStockToGitHub(showFeedback) {
+  if (!ghConfigured()) {
+    if (showFeedback) showToast('Спочатку заповни налаштування GitHub', true);
+    return false;
+  }
+  try {
+    const sha = await ghGetSha();
+    const body = {
+      message: `Залишки ліків — ${formatDate(todayKey())} ${nowTime()}`,
+      content: b64encodeUtf8(buildStockMarkdown()),
+      branch: state.settings.ghBranch || 'main'
+    };
+    if (sha) body.sha = sha;
+    const res = await fetch(ghContentsUrl(), { method: 'PUT', headers: ghHeaders(), body: JSON.stringify(body) });
+    if (res.ok) {
+      if (showFeedback) showToast('⬆ Залишки збережено на GitHub ✓');
+      return true;
+    }
+    const err = await res.json().catch(() => ({}));
+    if (showFeedback) showToast('✗ GitHub: ' + (err.message || res.status), true);
+    return false;
+  } catch (e) {
+    if (showFeedback) showToast('✗ Помилка зʼєднання з GitHub', true);
+    console.error('GitHub push error:', e);
+    return false;
+  }
+}
+
+async function pullStockFromGitHub() {
+  if (!ghConfigured()) { showToast('Спочатку заповни налаштування GitHub', true); return; }
+  try {
+    const url = `${ghContentsUrl()}?ref=${encodeURIComponent(state.settings.ghBranch || 'main')}`;
+    const res = await fetch(url, { headers: ghHeaders() });
+    if (!res.ok) { showToast('✗ Не вдалось прочитати файл на GitHub', true); return; }
+    const d = await res.json();
+    const text = b64decodeUtf8((d.content || '').replace(/\n/g, ''));
+    const parsed = parseStockMarkdown(text);
+    if (Object.keys(parsed).length === 0) { showToast('У файлі не знайдено залишків', true); return; }
+    if (!confirm('Замінити поточні залишки даними з GitHub?')) return;
+    Object.assign(state.stock, parsed);
+    saveData();
+    renderAll();
+    showToast('⬇ Залишки завантажено з GitHub ✓');
+  } catch (e) {
+    showToast('✗ Помилка завантаження з GitHub', true);
+    console.error('GitHub pull error:', e);
   }
 }
 
